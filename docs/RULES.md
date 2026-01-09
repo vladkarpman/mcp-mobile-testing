@@ -1,78 +1,64 @@
 # MCP Testing Rules & Best Practices
 
-Follow these rules to write reliable, maintainable tests.
+Follow these rules to write reliable, maintainable YAML tests.
 
 ---
 
-## Rule 1: Use Screen Constants
-
-Define element identifiers in screen objects, not inline strings.
-
-```kotlin
-// Bad
-tap("Login")
-tap("Email")
-tap("Password")
-
-// Good
-tap(LoginScreen.LOGIN_BUTTON)
-tap(LoginScreen.EMAIL_FIELD)
-tap(LoginScreen.PASSWORD_FIELD)
-```
-
-**Why:** Single source of truth. If UI text changes, update one place.
-
----
-
-## Rule 2: Add Waits After Actions
+## Rule 1: Add Waits After Actions
 
 UI needs time to respond. Always add waits after taps.
 
-```kotlin
-// Bad - may fail if UI hasn't updated
-tap(button)
-tap(nextButton)
+```yaml
+# Bad - may fail if UI hasn't updated
+- tap: "Submit"
+- tap: "Next"
 
-// Good - gives UI time to respond
-tap(button)
-wait(1.seconds)
-tap(nextButton)
+# Good - gives UI time to respond
+- tap: "Submit"
+- wait: 1s
+- tap: "Next"
 
-// Better - wait for specific element
-tap(button)
-waitFor(nextButton, timeout = 5.seconds)
-tap(nextButton)
+# Better - wait for specific element
+- tap: "Submit"
+- wait_for: "Next"
+- tap: "Next"
 ```
 
 **Recommended waits:**
-- After tap: `wait(500.milliseconds)` to `wait(1.seconds)`
-- After screen transition: `waitFor(element)` or `waitForScreen()`
-- After data load: `waitForScreen("Data loaded")`
+- After tap: `wait: 500ms` to `wait: 1s`
+- After screen transition: `wait_for: "element"`
+- After data load: `wait_for_screen: "Data loaded"`
 
 ---
 
-## Rule 3: Handle Optional Elements
+## Rule 2: Handle Optional Elements
 
-Dialogs, popups, and banners may or may not appear. Use `ifPresent`.
+Dialogs, popups, and banners may or may not appear. Use `if_present`.
 
-```kotlin
-// Bad - fails if popup not shown
-tap(PermissionDialog.ALLOW)
+```yaml
+# Bad - fails if popup not shown
+- tap: "Allow"
 
-// Good - only taps if visible
-ifPresent(PermissionDialog.ALLOW) {
-    tap(PermissionDialog.ALLOW)
-}
+# Good - only taps if visible
+- if_present: "Allow"
+  then:
+    - tap: "Allow"
 
-// Good - handle multiple optional elements
-ifPresent("Skip") { tap("Skip") }
-ifPresent("Not now") { tap("Not now") }
-ifPresent("Allow") { tap("Allow") }
+# Good - handle multiple optional elements
+- if_present: "Skip"
+  then:
+    - tap: "Skip"
+- if_present: "Not now"
+  then:
+    - tap: "Not now"
+- if_present: "Allow"
+  then:
+    - tap: "Allow"
 ```
 
 ---
 
-## Rule 4: Set Appropriate Timeouts
+## Rule 3: Set Appropriate Timeouts
 
 Different operations need different timeouts.
 
@@ -84,149 +70,138 @@ Different operations need different timeouts.
 | AI generation | 3-5 minutes |
 | Video processing | 5-10 minutes |
 
-```kotlin
-// Quick smoke test
-test("Verify home loads") {
-    timeout = 30.seconds
-    // ...
-}
+```yaml
+# Quick smoke test
+- name: Verify home loads
+  timeout: 30s
+  steps:
+    - verify_screen: "Home screen visible"
 
-// AI image generation
-test("Generate AI avatar") {
-    timeout = 5.minutes  // Generation takes time
-    // ...
-}
+# AI image generation
+- name: Generate AI avatar
+  timeout: 5m  # Generation takes time
+  steps:
+    - tap: "Generate"
+    - wait_for_screen: "Avatar generated"
 ```
 
 ---
 
-## Rule 5: Capture Screenshots at Key Points
+## Rule 4: Capture Screenshots at Key Points
 
 Screenshots help debug failures and document test execution.
 
-```kotlin
-test("Complete purchase") {
-    step("Add item to cart") {
-        tap(ProductScreen.ADD_TO_CART)
-        captureScreenshot("item_added")  // Before proceeding
-    }
+```yaml
+- name: Complete purchase
+  steps:
+    # Before proceeding
+    - tap: "Add to Cart"
+    - screenshot: item_added
 
-    step("Checkout") {
-        tap(CartScreen.CHECKOUT)
-        waitForScreen("Payment screen")
-        captureScreenshot("payment_screen")  // Key verification point
-    }
+    # Key verification point
+    - tap: "Checkout"
+    - wait_for_screen: "Payment screen"
+    - screenshot: payment_screen
 
-    step("Confirm purchase") {
-        tap(PaymentScreen.PAY_BUTTON)
-        waitFor("Success", "Order confirmed")
-        captureScreenshot("purchase_complete")  // Final result
-    }
-}
+    # Final result
+    - tap: "Pay"
+    - wait_for: "Order confirmed"
+    - screenshot: purchase_complete
 ```
 
 **When to capture:**
 - End of each test (for documentation)
 - Before/after critical actions
 - When verifying important screens
-- On test failure (automatic)
 
 ---
 
-## Rule 6: Use Descriptive Step Names
+## Rule 5: Use Descriptive Test Names
 
-Step names appear in test reports. Make them meaningful.
+Test names appear in reports. Make them meaningful.
 
-```kotlin
-// Bad - unclear what's happening
-step("Step 1") { ... }
-step("Step 2") { ... }
-step("Step 3") { ... }
+```yaml
+# Bad - unclear what's happening
+tests:
+  - name: Test 1
+  - name: Test 2
 
-// Good - clear intent
-step("Open login screen") { ... }
-step("Enter user credentials") { ... }
-step("Submit and verify success") { ... }
+# Good - clear intent
+tests:
+  - name: User can login with valid credentials
+  - name: Invalid password shows error message
 ```
 
 ---
 
-## Rule 7: Structure Tests with Setup/Action/Verify
+## Rule 6: Structure Tests with Setup/Action/Verify
 
 Each test should follow this pattern:
 
-```kotlin
-test("Feature works correctly") {
-    // SETUP - Get to the right state
-    step("Navigate to feature") {
-        tap(HomeScreen.FEATURE_BUTTON)
-        waitFor(FeatureScreen.MAIN_CONTENT)
-    }
+```yaml
+- name: Feature works correctly
+  steps:
+    # SETUP - Get to the right state
+    - tap: "Feature"
+    - wait_for: "Feature Screen"
 
-    // ACTION - Do the thing being tested
-    step("Perform the action") {
-        tap(FeatureScreen.ACTION_BUTTON)
-        type("input data")
-        tap(FeatureScreen.SUBMIT)
-    }
+    # ACTION - Do the thing being tested
+    - tap: "Action Button"
+    - type: "input data"
+    - tap: "Submit"
 
-    // VERIFY - Check the result
-    step("Verify result") {
-        waitForScreen("Success state")
-        verifyScreen(FeatureScreen.SUCCESS_EXPECTATION)
-        captureScreenshot("test_result")
-    }
-}
+    # VERIFY - Check the result
+    - wait_for_screen: "Success state"
+    - verify_screen: "Expected result shown"
+    - screenshot: test_result
 ```
 
 ---
 
-## Rule 8: Use beforeAll/afterAll for Suite Setup
+## Rule 7: Use setup/teardown for Suite Setup
 
 Don't repeat setup in every test.
 
-```kotlin
-val featureTestSuite = testSuite("Feature Tests") {
+```yaml
+config:
+  app: com.myapp
 
-    // Runs ONCE before all tests
-    beforeAll {
-        terminateApp()
-        launchApp()
-        wait(3.seconds)
+# Runs ONCE before all tests
+setup:
+  - terminate_app
+  - launch_app
+  - wait: 3s
+  # Handle onboarding
+  - if_present: "Continue"
+    then:
+      - tap: "Continue"
 
-        // Complete onboarding if needed
-        ifPresent("Continue") {
-            completeOnboarding()
-        }
-    }
+# Runs ONCE after all tests
+teardown:
+  - terminate_app
 
-    // Runs ONCE after all tests
-    afterAll {
-        terminateApp()
-    }
-
-    test("Test 1") { ... }
-    test("Test 2") { ... }
-    test("Test 3") { ... }
-}
+tests:
+  - name: Test 1
+    steps: [...]
+  - name: Test 2
+    steps: [...]
 ```
 
 ---
 
-## Rule 9: Tag Tests for Filtering
+## Rule 8: Tag Tests for Filtering
 
 Use tags to categorize and filter tests.
 
-```kotlin
-test("Critical login flow") {
-    tags = listOf("smoke", "critical", "auth")
-    // ...
-}
+```yaml
+tests:
+  - name: Critical login flow
+    tags: [smoke, critical, auth]
+    steps: [...]
 
-test("Edge case handling") {
-    tags = listOf("regression", "edge-case")
-    // ...
-}
+  - name: Edge case handling
+    tags: [regression, edge-case]
+    steps: [...]
 ```
 
 **Suggested tags:**
@@ -237,51 +212,72 @@ test("Edge case handling") {
 
 ---
 
-## Rule 10: Extract Reusable Helpers
+## Rule 9: Use Descriptive Verifications
 
-Common flows should be helper functions.
+Be specific about what you expect to see.
 
-```kotlin
-// helpers/AuthHelpers.kt
-suspend fun TestContext.login(email: String, password: String) {
-    tap(LoginScreen.EMAIL_FIELD)
-    type(email)
-    tap(LoginScreen.PASSWORD_FIELD)
-    type(password)
-    tap(LoginScreen.LOGIN_BUTTON)
-    waitForScreen("Home screen", timeout = 10.seconds)
-}
+```yaml
+# Bad - too vague
+- verify_screen: "Screen looks good"
 
-suspend fun TestContext.logout() {
-    tap(HomeScreen.PROFILE)
-    tap(ProfileScreen.LOGOUT)
-    waitFor(LoginScreen.LOGIN_BUTTON)
-}
+# Good - specific elements
+- verify_screen: "Login form with email field, password field, and blue Login button"
 
-// Use in tests
-test("User can view profile") {
-    step("Login") {
-        login("user@example.com", "password")
-    }
+# Good - with strictness for flexible matching
+- verify_screen:
+    expectation: "Home screen with navigation tabs"
+    strictness: lenient
+```
 
-    step("View profile") {
-        tap(HomeScreen.PROFILE)
-        verifyScreen(ProfileScreen.EXPECTATION)
-    }
+---
 
-    step("Logout") {
-        logout()
-    }
-}
+## Rule 10: Keep Tests Independent
+
+Each test should work regardless of order.
+
+```yaml
+# Bad - Test 2 depends on Test 1
+tests:
+  - name: Login
+    steps:
+      - tap: "Login"
+      - type: "user@example.com"
+      # Stays logged in...
+
+  - name: View Profile
+    steps:
+      # Assumes already logged in!
+      - tap: "Profile"
+
+# Good - Each test is self-contained
+tests:
+  - name: Login
+    steps:
+      - terminate_app
+      - launch_app
+      - wait: 3s
+      - tap: "Login"
+      - type: "user@example.com"
+
+  - name: View Profile
+    steps:
+      - terminate_app
+      - launch_app
+      - wait: 3s
+      # Login first
+      - tap: "Login"
+      - type: "user@example.com"
+      # Then view profile
+      - tap: "Profile"
 ```
 
 ---
 
 ## Checklist Before Running Tests
 
-- [ ] Screen constants match actual UI text
+- [ ] Test names are descriptive
 - [ ] Timeouts are appropriate for operations
-- [ ] Optional elements handled with `ifPresent`
+- [ ] Optional elements handled with `if_present`
 - [ ] Screenshots at key verification points
-- [ ] Step names are descriptive
+- [ ] Waits after actions that trigger UI changes
 - [ ] Device is connected and app is installed

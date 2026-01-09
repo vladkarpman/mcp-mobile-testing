@@ -1,152 +1,133 @@
 # How to Create MCP UI Tests
 
-A step-by-step guide for writing mobile UI tests using the MCP Testing Framework.
+Step-by-step guide to writing YAML-based mobile tests.
 
 ## Prerequisites
 
-Before you begin:
-- [ ] Device connected (`adb devices` for Android)
-- [ ] App installed on device
-- [ ] Claude Code CLI running with `mobile-mcp` configured
+- Device connected (`adb devices` for Android)
+- App installed on device
+- Claude Code CLI running with mobile-mcp
+
+## Step A: Create Test Config
+
+**What:** Define which app to test.
+
+```yaml
+config:
+  app: com.your.app.package    # Your app's package name
+  device: emulator-5554         # Optional: auto-detects if omitted
+```
+
+**Expected Result:** Claude Code knows which app to launch/terminate.
 
 ---
 
-## Step A: Define Screen Elements
+## Step B: Add Setup & Teardown
 
-**What:** Create constants for UI elements you'll interact with.
+**What:** Actions to run before/after all tests.
 
-**Where:** Create a file in `tests/mcp/{yourapp}/screens/`
+```yaml
+setup:
+  - terminate_app              # Kill app if running
+  - launch_app                 # Start fresh
+  - wait: 3s                   # Wait for app to load
 
-**Template:**
-```kotlin
-package com.example.myapp.tests.screens
-
-object LoginScreen {
-    // === Element Identifiers ===
-    // Use the exact text/label visible in the UI
-    const val EMAIL_FIELD = "Email"
-    const val PASSWORD_FIELD = "Password"
-    const val LOGIN_BUTTON = "Login"
-    const val FORGOT_PASSWORD = "Forgot password"
-
-    // === Screen Expectation ===
-    // Natural language description for AI verification
-    const val EXPECTATION = """
-        Login screen showing:
-        - Email input field at top
-        - Password input field below
-        - Login button
-        - Forgot password link
-    """
-}
+teardown:
+  - terminate_app              # Clean up after tests
 ```
 
-**Expected Result:** A Kotlin object with constants for each UI element.
+**Expected Result:** Each test run starts with clean app state.
 
 ---
 
-## Step B: Write Test Suite
+## Step C: Write Tests
 
-**What:** Define tests with steps that use your screen elements.
+**What:** Define test cases with steps.
 
-**Where:** Create a file in `tests/mcp/{yourapp}/suites/`
-
-**Template:**
-```kotlin
-package com.example.myapp.tests.suites
-
-import mcp.testing.dsl.*
-import com.example.myapp.tests.screens.*
-import kotlin.time.Duration.Companion.seconds
-
-val loginTestSuite = testSuite("Login") {
-    description = "Tests for login functionality"
-
-    // Runs once before all tests
-    beforeAll {
-        terminateApp()
-        launchApp()
-        wait(3.seconds)
-    }
-
-    // Runs once after all tests
-    afterAll {
-        terminateApp()
-    }
-
-    test("User can login with valid credentials") {
-        description = "Verify successful login flow"
-        tags = listOf("smoke", "auth", "critical")
-        timeout = 60.seconds
-
-        step("Navigate to login") {
-            tap("Login")
-            waitFor(LoginScreen.EMAIL_FIELD)
-        }
-
-        step("Enter credentials") {
-            tap(LoginScreen.EMAIL_FIELD)
-            type("user@example.com")
-            tap(LoginScreen.PASSWORD_FIELD)
-            type("password123")
-        }
-
-        step("Submit and verify") {
-            tap(LoginScreen.LOGIN_BUTTON)
-            waitForScreen("Home screen after login", timeout = 10.seconds)
-            verifyScreen(HomeScreen.EXPECTATION)
-            captureScreenshot("login_success")
-        }
-    }
-
-    test("Invalid credentials show error") {
-        tags = listOf("auth", "error")
-        timeout = 30.seconds
-
-        step("Try invalid login") {
-            tap(LoginScreen.EMAIL_FIELD)
-            type("wrong@example.com")
-            tap(LoginScreen.PASSWORD_FIELD)
-            type("wrongpassword")
-            tap(LoginScreen.LOGIN_BUTTON)
-        }
-
-        step("Verify error shown") {
-            waitFor("Invalid credentials", "Error")
-            verifyScreen("Error message displayed")
-            captureScreenshot("login_error")
-        }
-    }
-}
+```yaml
+tests:
+  - name: User can login
+    timeout: 60s
+    tags: [smoke, auth]
+    steps:
+      - tap: "Email"
+      - type: "user@example.com"
+      - tap: "Password"
+      - type: "secret123"
+      - tap: "Login"
+      - wait_for: "Welcome"
+      - verify_screen: "Home screen after login"
+      - screenshot: login_success
 ```
 
-**Expected Result:** A test suite file that Claude Code can execute.
+**Expected Result:** A complete test file Claude Code can execute.
 
 ---
 
-## Step C: Run the Test
+## Step D: Run the Test
 
-**What:** Ask Claude Code to execute your test.
-
-**Command Examples:**
-```
-Run the login test suite from tests/mcp/myapp/suites/LoginTestSuite.kt
-```
+**What:** Ask Claude Code to run your test.
 
 ```
-Run the "User can login" test from LoginTestSuite.kt
-```
-
-```
-Run all smoke tests in tests/mcp/myapp/suites/
+Run the test file tests/login.test.yaml
 ```
 
 **Expected Result:**
-- Claude reads your test file
-- Executes each step sequentially
-- Takes screenshots as specified
-- Reports pass/fail for each step
-- Provides detailed error info on failure
+- Claude executes each step
+- Screenshots captured
+- Pass/Fail result reported
+
+---
+
+## Complete Example
+
+```yaml
+# tests/mcp/onboarding.test.yaml
+
+config:
+  app: com.myapp.android
+
+setup:
+  - terminate_app
+  - launch_app
+  - wait: 3s
+
+teardown:
+  - terminate_app
+
+tests:
+  - name: Complete onboarding
+    timeout: 120s
+    tags: [smoke, onboarding]
+    steps:
+      - verify_screen: "Welcome screen with Get Started button"
+
+      - tap: "Get Started"
+      - wait: 1s
+
+      - tap: "Next"
+      - wait: 1s
+
+      - tap: "Next"
+      - wait: 1s
+
+      - tap: "Done"
+      - wait_for: "Home"
+
+      - verify_screen: "Home screen with main content"
+      - screenshot: onboarding_complete
+
+  - name: Skip onboarding
+    steps:
+      - if_present: "Skip"
+        then:
+          - tap: "Skip"
+          - wait: 2s
+
+      - verify_screen:
+          expectation: "Home screen or onboarding"
+          strictness: lenient
+```
 
 ---
 
@@ -155,89 +136,87 @@ Run all smoke tests in tests/mcp/myapp/suites/
 ### Actions
 | Action | Example |
 |--------|---------|
-| Tap element | `tap("Continue")` |
-| Tap coordinates | `tap(500, 1000)` |
-| Type text | `type("hello")` |
-| Swipe | `swipe(SwipeDirection.UP)` |
-| Press button | `pressButton(DeviceButton.BACK)` |
-| Wait | `wait(2.seconds)` |
-| Launch app | `launchApp()` |
-| Close app | `terminateApp()` |
+| Tap element | `- tap: "Continue"` |
+| Tap coordinates | `- tap: [500, 1000]` |
+| Type text | `- type: "hello"` |
+| Swipe | `- swipe: up` |
+| Press button | `- press: back` |
+| Wait | `- wait: 2s` |
+| Launch app | `- launch_app` |
+| Close app | `- terminate_app` |
 
 ### Assertions
 | Assertion | Example |
 |-----------|---------|
-| Verify screen | `verifyScreen("Home with 4 tabs")` |
-| Check elements | `verifyScreenContains("Home", "Settings")` |
-| Check absence | `verifyNoElement("Error")` |
+| Verify screen | `- verify_screen: "Home with 4 tabs"` |
+| Check elements | `- verify_contains: ["Home", "Settings"]` |
+| Check absence | `- verify_no_element: "Error"` |
 
 ### Flow Control
 | Control | Example |
 |---------|---------|
-| Wait for element | `waitFor("Continue", timeout = 10.seconds)` |
-| Conditional | `ifPresent("Skip") { tap("Skip") }` |
-| Retry | `retryOnFailure(maxAttempts = 3) { tap("Submit") }` |
-| Repeat | `repeat(5) { tap("Next") }` |
+| Wait for element | `- wait_for: "Continue"` |
+| Wait with timeout | `- wait_for: {element: "Done", timeout: 10s}` |
+| Conditional | `- if_present: "Skip"` + `then: [...]` |
+| Retry | `- retry: {attempts: 3, steps: [...]}` |
+| Repeat | `- repeat: {times: 5, steps: [...]}` |
 
 ---
 
-## Example: Complete Flow
+## Tips
 
-```kotlin
-// 1. Define screens
-object OnboardingScreen {
-    const val SKIP_BUTTON = "Skip"
-    const val NEXT_BUTTON = "Next"
-    const val DONE_BUTTON = "Done"
-}
+### Use Descriptive Verifications
 
-object HomeScreen {
-    const val TAB_HOME = "Home"
-    const val SETTINGS = "Settings"
-    const val EXPECTATION = """
-        Home screen with:
-        - Bottom navigation bar
-        - Home tab selected
-    """
-}
+```yaml
+# Bad - too vague
+- verify_screen: "Screen looks good"
 
-// 2. Write test
-val onboardingTest = test("Complete onboarding") {
-    timeout = 120.seconds
+# Good - specific
+- verify_screen: "Login form with email field, password field, and Login button"
+```
 
-    step("Launch app") {
-        launchApp()
-        wait(3.seconds)
-    }
+### Handle Optional Elements
 
-    step("Skip or complete onboarding") {
-        ifPresent(OnboardingScreen.SKIP_BUTTON) {
-            tap(OnboardingScreen.SKIP_BUTTON)
-        }
+```yaml
+# Popup might or might not appear
+- if_present: "Rate this app"
+  then:
+    - tap: "Not now"
+```
 
-        // Or go through pages
-        repeat(3) {
-            ifPresent(OnboardingScreen.NEXT_BUTTON) {
-                tap(OnboardingScreen.NEXT_BUTTON)
-                wait(1.seconds)
-            }
-        }
-    }
+### Add Waits After Actions
 
-    step("Verify home screen") {
-        waitFor(HomeScreen.TAB_HOME, timeout = 10.seconds)
-        verifyScreen(HomeScreen.EXPECTATION)
-        captureScreenshot("onboarding_complete")
-    }
-}
+```yaml
+- tap: "Submit"
+- wait: 1s              # Give UI time to respond
+- verify_screen: "..."
+```
 
-// 3. Run: "Run the onboarding test"
+### Use Appropriate Timeouts
+
+```yaml
+# Quick UI action
+- name: Tap button
+  timeout: 30s
+
+# AI generation feature
+- name: Generate avatar
+  timeout: 5m
+```
+
+### Capture Screenshots at Key Points
+
+```yaml
+- screenshot: before_action
+- tap: "Important button"
+- wait: 2s
+- screenshot: after_action
 ```
 
 ---
 
 ## Next Steps
 
-- Read [RULES.md](./RULES.md) for best practices
-- Copy templates from `/templates/` directory
-- Check examples in the repo
+- See [SCHEMA.md](SCHEMA.md) for all available actions
+- Copy templates from [templates/](../templates/)
+- Check [examples/](../examples/) for more patterns
