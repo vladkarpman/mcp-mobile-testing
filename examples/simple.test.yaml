@@ -1,0 +1,37 @@
+# Simple example test
+# Demonstrates basic test structure and common actions
+
+config:
+  app: com.example.myapp
+
+setup:
+  - terminate_app
+  - launch_app
+  - wait: 3s
+
+tests:
+  - name: App launches successfully
+    timeout: 30s
+    tags: [smoke]
+    steps:
+      - verify_screen: "App home screen visible"
+      - screenshot: app_launched
+
+  - name: Navigate to settings
+    steps:
+      - tap: "Settings"
+      - wait: 1s
+      - verify_screen: "Settings screen with options list"
+      - press: back
+      - verify_screen: "Back on home screen"
+
+  - name: Search functionality
+    steps:
+      - tap: "Search"
+      - type: "test query"
+      - type:
+          text: ""
+          submit: true
+      - wait_for: "Search results"
+      - verify_screen: "Search results displayed"
+      - screenshot: search_results

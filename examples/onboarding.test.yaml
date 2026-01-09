@@ -1,0 +1,113 @@
+# Onboarding flow test
+# Converted from Kotlin DSL - demonstrates complex flow control
+
+config:
+  app: tap.photo.boost.restoration
+
+setup:
+  - terminate_app
+  - wait: 1s
+
+teardown:
+  - terminate_app
+
+tests:
+  - name: Complete onboarding flow successfully
+    description: Verify user can complete the full onboarding walkthrough
+    timeout: 120s
+    tags: [critical, onboarding, smoke]
+    steps:
+      - launch_app
+      - wait: 3s
+
+      - verify_screen: "Walkthrough/onboarding screen with page indicator dots and Continue button"
+
+      # Navigate through intro pages
+      - repeat:
+          times: 3
+          steps:
+            - if_present: "Continue"
+              then:
+                - tap: "Continue"
+                - wait: 1s
+
+      # Handle before/after demo pages
+      - repeat:
+          times: 2
+          steps:
+            - if_present: "Continue"
+              then:
+                - tap: "Continue"
+                - wait: 1s
+
+      # Gender selection
+      - if_present: "Male"
+        then:
+          - tap: "Male"
+          - wait: 500ms
+
+      - if_present: "Continue"
+        then:
+          - tap: "Continue"
+          - wait: 1s
+
+      # Final page
+      - if_present: "Get Started"
+        then:
+          - tap: "Get Started"
+          - wait: 1s
+
+      - if_present: "Continue"
+        then:
+          - tap: "Continue"
+          - wait: 1s
+
+      # Verify home screen reached
+      - wait_for:
+          element: "Home"
+          timeout: 10s
+      - verify_screen: "Home screen with bottom navigation showing 4 tabs: Home, AI Image, AI Video, Me"
+      - screenshot: onboarding_complete
+
+  - name: Skip onboarding flow
+    description: Verify skip option works if available
+    timeout: 60s
+    tags: [onboarding, skip]
+    steps:
+      - terminate_app
+      - wait: 1s
+      - launch_app
+      - wait: 3s
+
+      - if_present: "Skip"
+        then:
+          - tap: "Skip"
+          - wait: 2s
+
+      - verify_screen:
+          expectation: "Home screen with bottom tabs OR walkthrough page"
+          strictness: lenient
+
+  - name: Navigate between walkthrough pages
+    description: Verify forward navigation through pages works
+    timeout: 90s
+    tags: [onboarding, navigation]
+    steps:
+      - terminate_app
+      - launch_app
+      - wait: 3s
+
+      - screenshot: walkthrough_page_1
+      - verify_screen: "First walkthrough page with intro content"
+
+      - tap: "Continue"
+      - wait: 1s
+      - screenshot: walkthrough_page_2
+
+      - tap: "Continue"
+      - wait: 1s
+      - screenshot: walkthrough_page_3
+
+      - verify_screen:
+          expectation: "Walkthrough page with page indicator showing progress"
+          strictness: lenient
