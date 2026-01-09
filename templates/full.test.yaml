@@ -1,0 +1,269 @@
+# Full Feature Template
+# Complete template showing all available features
+#
+# This template demonstrates every action, assertion, and flow control
+# available in the YAML testing framework.
+
+config:
+  app: com.your.app.package
+  device: emulator-5554  # Optional: auto-detects if omitted
+
+# Runs once before all tests
+setup:
+  - terminate_app
+  - launch_app
+  - wait: 3s
+  # Handle optional onboarding
+  - if_present: "Skip"
+    then:
+      - tap: "Skip"
+      - wait: 1s
+
+# Runs once after all tests
+teardown:
+  - terminate_app
+
+tests:
+  # ============================================
+  # Basic Actions Demo
+  # ============================================
+  - name: Basic actions example
+    description: Demonstrates tap, type, swipe, press
+    timeout: 60s
+    tags: [example, basic]
+    steps:
+      # Tap by text/description
+      - tap: "Button"
+      - wait: 500ms
+
+      # Tap by coordinates
+      - tap: [100, 200]
+      - wait: 500ms
+
+      # Double tap
+      - double_tap: "Item"
+      - wait: 500ms
+
+      # Long press with default duration (500ms)
+      - long_press: "Element"
+      - wait: 500ms
+
+      # Long press with custom duration
+      - long_press:
+          element: "Hold me"
+          duration: 2000
+
+      # Type into focused field
+      - tap: "Input field"
+      - type: "Hello world"
+
+      # Type with submit (press enter)
+      - type:
+          text: "Search query"
+          submit: true
+
+      # Swipe directions
+      - swipe: up
+      - wait: 500ms
+      - swipe: down
+      - wait: 500ms
+      - swipe: left
+      - wait: 500ms
+      - swipe: right
+
+      # Swipe with custom distance
+      - swipe:
+          direction: up
+          distance: 800
+
+      # Press device buttons
+      - press: back
+      - wait: 500ms
+      - press: home
+
+      # Screenshot
+      - screenshot: basic_actions_complete
+
+  # ============================================
+  # App Control Demo
+  # ============================================
+  - name: App control example
+    description: Demonstrates app launch, terminate, orientation
+    timeout: 60s
+    tags: [example, app-control]
+    steps:
+      # Terminate and relaunch
+      - terminate_app
+      - wait: 1s
+      - launch_app
+      - wait: 3s
+
+      # Launch different app
+      - launch_app: "com.android.settings"
+      - wait: 2s
+      - terminate_app: "com.android.settings"
+
+      # Relaunch our app
+      - launch_app
+      - wait: 3s
+
+      # Change orientation
+      - set_orientation: landscape
+      - wait: 1s
+      - screenshot: landscape_view
+      - set_orientation: portrait
+      - wait: 1s
+
+      # Open URL
+      - open_url: "https://example.com"
+      - wait: 3s
+
+  # ============================================
+  # Assertions Demo
+  # ============================================
+  - name: Assertions example
+    description: Demonstrates verify_screen, verify_contains, verify_no_element
+    timeout: 60s
+    tags: [example, assertions]
+    steps:
+      - launch_app
+      - wait: 3s
+
+      # Simple screen verification
+      - verify_screen: "Home screen with main content and navigation"
+
+      # Verification with strictness levels
+      - verify_screen:
+          expectation: "Screen has expected layout"
+          strictness: strict    # Exact match required
+
+      - verify_screen:
+          expectation: "Key elements present"
+          strictness: normal    # Key elements must match
+
+      - verify_screen:
+          expectation: "General structure matches"
+          strictness: lenient   # Flexible matching
+
+      # Verify multiple elements present
+      - verify_contains:
+          - "Home"
+          - "Settings"
+          - "Profile"
+
+      # Verify element is NOT present
+      - verify_no_element: "Error message"
+      - verify_no_element: "Loading spinner"
+
+  # ============================================
+  # Flow Control Demo
+  # ============================================
+  - name: Flow control example
+    description: Demonstrates wait_for, if_present, retry, repeat
+    timeout: 120s
+    tags: [example, flow-control]
+    steps:
+      - launch_app
+      - wait: 3s
+
+      # Wait for element
+      - wait_for: "Continue"
+
+      # Wait for element with timeout
+      - wait_for:
+          element: "Ready"
+          timeout: 15s
+
+      # Wait for any of multiple elements
+      - wait_for_any:
+          - "Success"
+          - "Complete"
+          - "Done"
+
+      # Wait for screen state
+      - wait_for_screen: "Data loaded and displayed"
+
+      # Conditional execution
+      - if_present: "Rate this app"
+        then:
+          - tap: "Not now"
+          - wait: 500ms
+
+      - if_present: "Permission required"
+        then:
+          - tap: "Allow"
+          - wait: 1s
+
+      # Retry on failure
+      - retry:
+          attempts: 3
+          delay: 2s
+          steps:
+            - tap: "Flaky button"
+            - wait_for: "Result"
+
+      # Repeat actions
+      - repeat:
+          times: 5
+          steps:
+            - swipe: up
+            - wait: 500ms
+
+      # Complex conditional with multiple actions
+      - if_present: "Tutorial"
+        then:
+          - tap: "Next"
+          - wait: 1s
+          - tap: "Next"
+          - wait: 1s
+          - tap: "Done"
+
+      - screenshot: flow_control_complete
+
+  # ============================================
+  # Real-World Test Example
+  # ============================================
+  - name: Login flow
+    description: Complete login test demonstrating real usage
+    timeout: 90s
+    tags: [smoke, auth, critical]
+    steps:
+      # Setup
+      - terminate_app
+      - launch_app
+      - wait: 3s
+
+      # Handle optional onboarding
+      - if_present: "Skip"
+        then:
+          - tap: "Skip"
+          - wait: 1s
+
+      # Navigate to login
+      - tap: "Login"
+      - wait_for: "Email"
+
+      # Enter credentials
+      - tap: "Email"
+      - type: "user@example.com"
+      - tap: "Password"
+      - type: "password123"
+
+      # Submit
+      - tap: "Sign In"
+
+      # Wait for result with retry
+      - retry:
+          attempts: 2
+          delay: 3s
+          steps:
+            - wait_for_screen: "Home screen after login"
+
+      # Verify success
+      - verify_screen: "Logged in user sees home screen with profile"
+      - verify_contains:
+          - "Welcome"
+          - "Home"
+
+      # Document result
+      - screenshot: login_success

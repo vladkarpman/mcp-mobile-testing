@@ -1,0 +1,26 @@
+# Basic Test Template
+# Copy this file and customize for your app
+#
+# Usage:
+# 1. Copy to your tests directory
+# 2. Update config.app with your package name
+# 3. Replace test steps with your actions
+# 4. Run: "Run the test file tests/your-test.test.yaml"
+
+config:
+  app: com.your.app.package
+
+setup:
+  - terminate_app
+  - launch_app
+  - wait: 3s
+
+tests:
+  - name: Your test name here
+    timeout: 60s
+    tags: [smoke]
+    steps:
+      - tap: "Button"
+      - wait: 1s
+      - verify_screen: "Expected screen state"
+      - screenshot: test_result
